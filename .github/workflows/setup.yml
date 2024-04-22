@@ -1,0 +1,29 @@
+name: Setup repository
+
+on:
+  create
+
+jobs:
+  rename:
+    name: Rename Project
+
+    runs-on: ubuntu-latest
+
+    permissions: write-all
+
+    steps:
+      - run: mv ./A-Fishy-Library.iml ${{ github.event.repository.name }}.iml
+  create_issue:
+    if: github.event.ref == github.event.master_branch
+    name: Create issue
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+
+    steps:
+
+      - uses: imjohnbo/issue-bot@v3
+        with:
+          title: "Test issue"

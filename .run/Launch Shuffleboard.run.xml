@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Launch Shuffleboard"
+    type="JarApplication" activateToolWindowBeforeRun="false">
+    <option name="JAR_PATH"
+      value="$USER_HOME$/wpilib/2023/tools/artifacts/Shuffleboard-2023.4.3-macarm64.jar" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <module name="A-Fishy-Library" />
+    <method v="2" />
+  </configuration>
+</component>
