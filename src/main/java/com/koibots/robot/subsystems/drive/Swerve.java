@@ -12,6 +12,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.trajectory.ExponentialProfile;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -65,11 +66,13 @@ public class Swerve extends SubsystemBase {
 
             @Override
             public void execute() {
-                
+                ExponentialProfile x = ;
                 
                 
                 ChassisSpeeds desiredState = new ChassisSpeeds(); // TODO: Implement setpoint setting
                 
+                // TODO: Clean this up. Use actual vectors and change time from microseconds to seconds
+
                 kinematics.toSwerveModuleStates(new ChassisSpeeds());
 
                 SwerveModuleState[] desiredModuleStates = kinematics.toSwerveModuleStates(desiredState);
@@ -153,13 +156,13 @@ public class Swerve extends SubsystemBase {
                         if (Math.abs(desiredModuleStates[i].speedMetersPerSecond) < 1E-9) {
                             // Goal angle doesn't matter. Just leave module at its current angle.
                             overrideSteering.set(i, Optional.of(prevSetpoints[i].angle));
-                            
+
                             continue;
                         }
 
                         var necessaryRotation = prevSetpoints[i].angle.unaryMinus().rotateBy(
                                 desiredModuleStates[i].angle);
-                        if (flipHeading(necessaryRotation)) {
+                        if (Math.abs(necessaryRotation.getRadians()) > Math.PI / 2.0) {
                             necessaryRotation = necessaryRotation.unaryMinus();
                         }
                         // getRadians() bounds to +/- Pi.
@@ -186,13 +189,13 @@ public class Swerve extends SubsystemBase {
                     final int kMaxIterations = 8;
                     double s = findSteeringMaxS(prev_vx[i], prev_vy[i], prev_heading[i].getRadians(),
                                                 desired_vx[i], desired_vy[i], desired_heading[i].getRadians(),
-                                                max_theta_step, kMaxIterations);
+                                                max_theta_step);
                     min_s = Math.min(min_s, s);
                 }
 
                 // Enforce drive wheel acceleration limits.
-                final double max_vel_step = dt * limits.kMaxDriveAcceleration;
-                for (int i = 0; i < modules.length; ++i) {
+                final double max_vel_step = (RobotController.getFPGATime() - prevTime) * PhysicalConstants.MAX_ACCEL;
+                for (int i = 0; i < 4; ++i) {
                     if (min_s == 0.0) {
                         // No need to carry on.
                         break;
@@ -204,7 +207,7 @@ public class Swerve extends SubsystemBase {
                     final int kMaxIterations = 10;
                     double s = min_s * findDriveMaxS(prev_vx[i], prev_vy[i], Math.hypot(prev_vx[i], prev_vy[i]),
                                                      vx_min_s, vy_min_s, Math.hypot(vx_min_s, vy_min_s),
-                                                     max_vel_step, kMaxIterations);
+                                                     max_vel_step);
                     min_s = Math.min(min_s, s);
                 }
 
@@ -217,14 +220,14 @@ public class Swerve extends SubsystemBase {
                     final var maybeOverride = overrideSteering.get(i);
                     if (maybeOverride.isPresent()) {
                         var override = maybeOverride.get();
-                        if (flipHeading(retStates[i].angle.unaryMinus().rotateBy(override))) {
+                        if (Math.abs(retStates[i].angle.unaryMinus().rotateBy(override).getRadians()) > Math.PI / 2.0) {
                             retStates[i].speedMetersPerSecond *= -1.0;
                         }
                         retStates[i].angle = override;
                     }
                     final var deltaRotation = prevSetpoints[i].angle.unaryMinus().rotateBy(retStates[i].angle);
-                    if (flipHeading(deltaRotation)) {
-                        retStates[i].angle = retStates[i].angle.flip();
+                    if (Math.abs(deltaRotation.getRadians()) > Math.PI / 2) {
+                        retStates[i].angle = retStates[i].angle.unaryMinus();
                         retStates[i].speedMetersPerSecond *= -1.0;
                     }
                 }
@@ -244,4 +247,76 @@ public class Swerve extends SubsystemBase {
     public Command autonomousPathFollowingCommand() {
         return new Command() {};
     }
+
+    @FunctionalInterface
+    private interface Function2d {
+        double f(double x, double y);
+    }
+
+
+    /**
+    * Find the root of the generic 2D parametric function 'func' using the regula falsi technique. This is a pretty naive way to
+    * do root finding, but it's usually faster than simple bisection while being robust in ways that e.g. the Newton-Raphson
+    * method isn't.
+    * @param func The Function2d to take the root of.
+    * @param x_0 x value of the lower bracket.
+    * @param y_0 y value of the lower bracket.
+    * @param f_0 value of 'func' at x_0, y_0 (passed in by caller to save a call to 'func' during recursion)
+    * @param x_1 x value of the upper bracket.
+    * @param y_1 y value of the upper bracket.
+    * @param f_1 value of 'func' at x_1, y_1 (passed in by caller to save a call to 'func' during recursion)
+    * @param iterations_left Number of iterations of root finding left.
+    * @return The parameter value 's' that interpolating between 0 and 1 that corresponds to the (approximate) root.
+    */
+    private double findRoot(Function2d func, double x_0, double y_0, double f_0, double x_1, double y_1, double f_1, int iterations_left) {
+        if (iterations_left < 0 || Math.abs(f_1 - f_0) < 1E-9) {
+            return 1.0;
+        }
+        var s_guess = Math.max(0.0, Math.min(1.0, -f_0 / (f_1 - f_0)));
+        var x_guess = (x_1 - x_0) * s_guess + x_0;
+        var y_guess = (y_1 - y_0) * s_guess + y_0;
+        var f_guess = func.f(x_guess, y_guess);
+        if (Math.signum(f_0) == Math.signum(f_guess)) {
+            // 0 and guess on same side of root, so use upper bracket.
+            return s_guess + (1.0 - s_guess) * findRoot(func, x_guess, y_guess, f_guess, x_1, y_1, f_1, iterations_left - 1);
+        } else {
+            // Use lower bracket.
+            return s_guess * findRoot(func, x_0, y_0, f_0, x_guess, y_guess, f_guess, iterations_left - 1);
+        }
+    }
+
+    protected double findSteeringMaxS(double x_0, double y_0, double f_0, double x_1, double y_1, double f_1, double max_deviation) {
+        f_1 = unwrapAngle(f_0, f_1);
+        double diff = f_1 - f_0;
+        if (Math.abs(diff) <= max_deviation) {
+            // Can go all the way to s=1.
+            return 1.0;
+        }
+        double offset = f_0 + Math.signum(diff) * max_deviation;
+        Function2d func = (x,y) -> unwrapAngle(f_0, Math.atan2(y, x)) - offset;
+        return findRoot(func, x_0, y_0, f_0 - offset, x_1, y_1, f_1 - offset, 8);
+    }
+
+    protected double findDriveMaxS(double x_0, double y_0, double f_0, double x_1, double y_1, double f_1, double max_vel_step) {
+        double diff = f_1 - f_0;
+        if (Math.abs(diff) <= max_vel_step) {
+            // Can go all the way to s=1.
+            return 1.0;
+        }
+        double offset = f_0 + Math.signum(diff) * max_vel_step;
+        Function2d func = (x,y) -> Math.hypot(x, y) - offset;
+
+        return findRoot(func, x_0, y_0, f_0 - offset, x_1, y_1, f_1 - offset, 10);
+    }
+
+    private double unwrapAngle(double ref, double angle) {
+            double diff = angle - ref;
+            if (diff > Math.PI) {
+                return angle - 2.0 * Math.PI;
+            } else if (diff < -Math.PI) {
+                return angle + 2.0 * Math.PI;
+            } else {
+                return angle;
+            }
+        }
 }

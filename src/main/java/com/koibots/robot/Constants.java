@@ -55,5 +55,6 @@ public final class Constants {
         
         public static final double DRIVE_GEAR_RATIO = 0.0;
         public static final double TURN_GEAR_RATIO = 0.0;
+        public static final double MAX_ACCEL = 0.0;
     }
 }

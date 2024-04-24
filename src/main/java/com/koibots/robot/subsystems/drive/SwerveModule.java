@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
+import monologue.Annotations.Log;
 import monologue.Logged;
 
 public class SwerveModule implements Logged {
@@ -33,6 +34,7 @@ public class SwerveModule implements Logged {
     private final MotionMagicVelocityVoltage driveOutputRequest =
             new MotionMagicVelocityVoltage(0, 0, false, 0, 0, false, false, false);
 
+    @Log
     @Getter @Setter private SwerveModuleState targetState;
 
     protected SwerveModule(int turnID, int driveID) {
@@ -112,4 +114,6 @@ public class SwerveModule implements Logged {
                 driveTalon.getVelocity().getValue(),
                 Rotation2d.fromRadians(turnAbsoluteEncoder.getPosition()));
     }
+
+    
 }
