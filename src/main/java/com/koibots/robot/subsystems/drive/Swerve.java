@@ -11,8 +11,12 @@ import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.spline.QuinticHermiteSpline;
+import edu.wpi.first.math.spline.Spline;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.trajectory.ExponentialProfile;
+import edu.wpi.first.math.trajectory.TrajectoryConfig;
+import edu.wpi.first.math.trajectory.TrajectoryGenerator;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -66,8 +70,7 @@ public class Swerve extends SubsystemBase {
 
             @Override
             public void execute() {
-                ExponentialProfile x = ;
-                
+                var x = new ExponentialProfile(ExponentialProfile.Constraints.fromCharacteristics(12, 0.5, 0.2));
                 
                 ChassisSpeeds desiredState = new ChassisSpeeds(); // TODO: Implement setpoint setting
                 

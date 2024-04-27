@@ -6,13 +6,22 @@ package com.koibots.robot;
 import com.ctre.phoenix6.hardware.Pigeon2;
 import com.koibots.robot.Constants.CANDeviceIDs;
 import com.koibots.robot.subsystems.drive.Swerve;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.spline.Spline;
+import edu.wpi.first.math.trajectory.TrajectoryConfig;
+import edu.wpi.first.math.trajectory.TrajectoryGenerator;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import monologue.Logged;
 import monologue.Monologue;
+
+import java.util.ArrayList;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -56,6 +65,11 @@ public class Robot extends TimedRobot implements Logged {
         CommandScheduler.getInstance().run();
 
         Monologue.updateAll();
+    }
+
+    @Override
+    public void driverStationConnected() {
+        super.driverStationConnected();
     }
 
     /** This autonomous runs the autonomous command */
